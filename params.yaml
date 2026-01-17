@@ -1,0 +1,48 @@
+# Training Parameters
+# Modify these values to control model training behavior
+
+data:
+  credit_frauds:
+    x_path: "data/training/credit_frauds/x_credit.csv"
+    y_path: "data/training/credit_frauds/y_credit.csv"
+    reference_path: "data/raw/credit_frauds/creditcard.csv"
+    output_dir: "plots/credit_frauds"
+    target_col: "Class"
+    experiment_name: "credit-fraud-detection"
+  telco:
+    x_path: "data/training/telco/x_telco.csv"
+    y_path: "data/training/telco/y_telco.csv"
+    reference_path: "data/training/telco/x_telco.csv"
+    output_dir: "plots/telco"
+    target_col: "Churn"
+    experiment_name: "telco-churn-detection"
+
+model:
+  type: "RandomForest"
+  n_estimators: 100
+  max_depth: null
+  min_samples_split: 2
+  min_samples_leaf: 1
+  class_weight: "balanced"  # handles imbalanced data
+  random_state: 42
+  n_jobs: -1
+
+training:
+  test_size: 0.2
+  random_state: 42
+
+mlflow:
+  experiment_name: "credit-fraud-detection"
+  tracking_uri: null  # uses default local mlruns
+
+drift:
+  ks_p_threshold: 0.01
+  psi_threshold: 0.2
+  mmd_threshold: 0.001
+  window_size: 500
+  step: 100
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  prediction_threshold: 0.3  # lower threshold for better fraud recall

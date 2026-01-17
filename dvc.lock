@@ -1,0 +1,117 @@
+schema: '2.0'
+stages:
+  ingestion:
+    cmd: python src/data_ingestion.py
+    outs:
+    - path: data/raw/credit_frauds/creditcard.csv
+      hash: md5
+      md5: e90efcb83d69faf99fcab8b0255024de
+      size: 150828752
+    - path: data/raw/telco_data/telco_churn.csv
+      hash: md5
+      md5: 0f9de68e012bd3aed5fa7cdc9fc421af
+      size: 977501
+  preprocess:
+    cmd: python src/preprocessing.py
+    deps:
+    - path: data/raw/credit_frauds/creditcard.csv
+      hash: md5
+      md5: e90efcb83d69faf99fcab8b0255024de
+      size: 150828752
+    - path: data/raw/telco_data/telco_churn.csv
+      hash: md5
+      md5: 0f9de68e012bd3aed5fa7cdc9fc421af
+      size: 977501
+    - path: src/preprocessing.py
+      hash: md5
+      md5: 2fd5bae99d222afc482aafee9d5a5e45
+      size: 2205
+    outs:
+    - path: data/preprocessed/credit_frauds/cleaned_credit.csv
+      hash: md5
+      md5: 82a1f79350b6d2c7070948208845ac46
+      size: 151672019
+    - path: data/preprocessed/telco/cleaned_telco.csv
+      hash: md5
+      md5: 6cbc9bfd61c99ec1a3acff91cd52dc12
+      size: 1007182
+  feature_engineering:
+    cmd: python src/feature_engineering.py
+    deps:
+    - path: data/preprocessed/credit_frauds/cleaned_credit.csv
+      hash: md5
+      md5: 82a1f79350b6d2c7070948208845ac46
+      size: 151672019
+    - path: data/preprocessed/telco/cleaned_telco.csv
+      hash: md5
+      md5: 6cbc9bfd61c99ec1a3acff91cd52dc12
+      size: 1007182
+    - path: src/feature_engineering.py
+      hash: md5
+      md5: bf3c1d0a8661264f65cbe0eb0554ba4f
+      size: 2530
+    outs:
+    - path: data/training/credit_frauds/x_credit.csv
+      hash: md5
+      md5: 4e1ada9ed5a2e4bd7d6b8b0bd43abb94
+      size: 169317723
+    - path: data/training/credit_frauds/y_credit.csv
+      hash: md5
+      md5: f82dbc7138d34343af4119daf9799b0c
+      size: 854428
+    - path: data/training/telco/x_telco.csv
+      hash: md5
+      md5: ab4883c107170ec51adfbc2dcf1dd085
+      size: 2093529
+    - path: data/training/telco/y_telco.csv
+      hash: md5
+      md5: 47b28afa61abed698521fb6194ae89ed
+      size: 21136
+  train:
+    cmd: python src/train.py
+    deps:
+    - path: data/training/credit_frauds/x_credit.csv
+      hash: md5
+      md5: 4e1ada9ed5a2e4bd7d6b8b0bd43abb94
+      size: 169317723
+    - path: data/training/credit_frauds/y_credit.csv
+      hash: md5
+      md5: f82dbc7138d34343af4119daf9799b0c
+      size: 854428
+    - path: data/training/telco/x_telco.csv
+      hash: md5
+      md5: ab4883c107170ec51adfbc2dcf1dd085
+      size: 2093529
+    - path: data/training/telco/y_telco.csv
+      hash: md5
+      md5: 47b28afa61abed698521fb6194ae89ed
+      size: 21136
+    - path: src/train.py
+      hash: md5
+      md5: 910a804ff2cce22693b4cac0415bd0a5
+      size: 3355
+    outs:
+    - path: plots/credit_frauds/clf_report.json
+      hash: md5
+      md5: 733ff4022ea98fbde93dc0c42e867f6b
+      size: 731
+    - path: plots/credit_frauds/cm.png
+      hash: md5
+      md5: b4113524c47168b125314372e9a3757c
+      size: 17750
+    - path: plots/credit_frauds/roc.png
+      hash: md5
+      md5: 70a5ef898c9edc0190e066d470cd6bbb
+      size: 23128
+    - path: plots/telco/clf_report.json
+      hash: md5
+      md5: 0fb4484f990fbc71500464bd26c1bd38
+      size: 735
+    - path: plots/telco/cm.png
+      hash: md5
+      md5: 7037dfcccb0fc8842abf31e2420e4e8c
+      size: 18911
+    - path: plots/telco/roc.png
+      hash: md5
+      md5: 45e39f5b028e45b1877c024eaabb4f39
+      size: 27264

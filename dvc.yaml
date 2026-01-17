@@ -1,0 +1,41 @@
+stages:
+  ingestion:
+    cmd: python src/data_ingestion.py
+    outs:
+      - data/raw/credit_frauds/creditcard.csv
+      - data/raw/telco_data/telco_churn.csv
+  preprocess:
+    cmd: python src/preprocessing.py
+    deps:
+      - data/raw/credit_frauds/creditcard.csv
+      - data/raw/telco_data/telco_churn.csv
+      - src/preprocessing.py
+    outs:
+      - data/preprocessed/credit_frauds/cleaned_credit.csv
+      - data/preprocessed/telco/cleaned_telco.csv
+  feature_engineering:
+    cmd: python src/feature_engineering.py
+    deps:
+      - data/preprocessed/credit_frauds/cleaned_credit.csv
+      - data/preprocessed/telco/cleaned_telco.csv
+      - src/feature_engineering.py
+    outs:
+      - data/training/credit_frauds/x_credit.csv
+      - data/training/credit_frauds/y_credit.csv
+      - data/training/telco/x_telco.csv
+      - data/training/telco/y_telco.csv
+  train:
+    cmd: python src/train.py
+    deps:
+      - data/training/credit_frauds/x_credit.csv
+      - data/training/credit_frauds/y_credit.csv
+      - data/training/telco/x_telco.csv
+      - data/training/telco/y_telco.csv
+      - src/train.py
+    outs:
+      - plots/telco/roc.png
+      - plots/telco/cm.png
+      - plots/telco/clf_report.json
+      - plots/credit_frauds/roc.png
+      - plots/credit_frauds/cm.png
+      - plots/credit_frauds/clf_report.json
