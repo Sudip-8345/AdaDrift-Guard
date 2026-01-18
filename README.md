@@ -36,7 +36,6 @@ Self-Healing-MLOps/
 │   ├── api.py              # FastAPI REST endpoints
 │   ├── model.py            # Model wrapper and loading utilities
 │   ├── streamlit_app.py    # Interactive dashboard
-│   └── Dockerfile          # Container configuration
 ├── data/
 │   ├── raw/                # Original datasets
 │   ├── preprocessed/       # Cleaned data
@@ -55,6 +54,7 @@ Self-Healing-MLOps/
 ├── mlruns/                 # MLflow experiment artifacts
 ├── params.yaml             # Training configuration
 ├── requirements.txt
+└── Dockerfile          # Container configuration
 └── docker-compose.yml
 ```
 

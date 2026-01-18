@@ -80,30 +80,47 @@ def load_latest_model(dataset_type="credit"):
     }
     experiment_name = experiment_map.get(dataset_type, "credit-fraud-detection")
     
+    # Define expected feature patterns for each dataset
+    telco_features = ['SeniorCitizen', 'tenure', 'MonthlyCharges', 'TotalCharges']
+    credit_features = ['Time', 'V1', 'V2', 'Amount']
+    
     # First try to find the experiment ID by name
     exp_id = get_experiment_id(experiment_name)
     
+    # Collect all model paths
+    all_model_paths = []
+    
     if exp_id:
         models_dir = os.path.join(base_dir, "mlruns", exp_id, "models")
-        model_dirs = glob.glob(os.path.join(models_dir, "m-*", "artifacts", "model.pkl"))
-    else:
-        # Fallback: search in default experiment (1)
-        models_dir = os.path.join(base_dir, "mlruns", "1", "models")
-        model_dirs = glob.glob(os.path.join(models_dir, "m-*", "artifacts", "model.pkl"))
+        all_model_paths.extend(glob.glob(os.path.join(models_dir, "m-*", "artifacts", "model.pkl")))
     
-    if not model_dirs:
-        # Try searching in run artifacts directly
-        if exp_id:
-            run_dirs = glob.glob(os.path.join(base_dir, "mlruns", exp_id, "*", "artifacts", "model", "model.pkl"))
-        else:
-            run_dirs = glob.glob(os.path.join(base_dir, "mlruns", "1", "*", "artifacts", "model", "model.pkl"))
-        if run_dirs:
-            model_dirs = run_dirs
+    # Also search all experiments and filter by feature names
+    for exp_dir in glob.glob(os.path.join(base_dir, "mlruns", "*")):
+        if os.path.isdir(exp_dir):
+            models_dir = os.path.join(exp_dir, "models")
+            all_model_paths.extend(glob.glob(os.path.join(models_dir, "m-*", "artifacts", "model.pkl")))
     
-    if not model_dirs:
+    # Remove duplicates and filter by dataset type
+    all_model_paths = list(set(all_model_paths))
+    
+    # Filter models by their feature names
+    valid_models = []
+    for model_path in all_model_paths:
+        try:
+            model = joblib.load(model_path)
+            if hasattr(model, 'feature_names_in_'):
+                features = list(model.feature_names_in_)
+                if dataset_type == "telco" and any(f in features for f in telco_features):
+                    valid_models.append(model_path)
+                elif dataset_type == "credit" and any(f in features for f in credit_features):
+                    valid_models.append(model_path)
+        except:
+            pass
+    
+    if not valid_models:
         return None
     
-    latest = max(model_dirs, key=os.path.getmtime)
+    latest = max(valid_models, key=os.path.getmtime)
     return ModelWrapper(latest)
 
 

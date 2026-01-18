@@ -3,6 +3,7 @@ import json
 import yaml
 import mlflow
 import mlflow.sklearn
+import joblib
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
@@ -19,6 +20,7 @@ logging.getLogger("alembic").setLevel(logging.ERROR)
 # Load parameters
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARAMS_PATH = os.path.join(BASE_DIR, "params.yaml")
+MODELS_DIR = os.path.join(BASE_DIR, "models")
 
 def load_params():
     with open(PARAMS_PATH, 'r') as f:
@@ -32,7 +34,7 @@ def load_data(path, name):
         print(f"{name} data not found at {full_path}")
         return None
     
-def train_and_log(X, Y, params, output_dir='plots'):
+def train_and_log(X, Y, params, output_dir='plots', model_name='model'):
     model_params = params['model']
     train_params = params['training']
     
@@ -78,6 +80,12 @@ def train_and_log(X, Y, params, output_dir='plots'):
     
     with open(cr_path, 'w') as f:
         json.dump(report, f, indent=4)
+    
+    # Save model locally to dedicated file
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    local_model_path = os.path.join(MODELS_DIR, f"{model_name}.joblib")
+    joblib.dump(model, local_model_path)
+    print(f"Model saved locally to: {local_model_path}")
         
     mlflow_params = params['mlflow']
     mlflow.set_experiment(mlflow_params['experiment_name'])
@@ -112,7 +120,7 @@ if __name__ == "__main__":
         print("Training Credit Card Fraud Detection Model...")
         credit_params = params.copy()
         credit_params['mlflow']['experiment_name'] = 'credit-fraud-detection'
-        train_and_log(x_credit, y_credit, credit_params, output_dir=credit_data['output_dir'])
+        train_and_log(x_credit, y_credit, credit_params, output_dir=credit_data['output_dir'], model_name='credit_model')
     
     # Train telco churn model
     telco_data = params['data']['telco']
@@ -123,4 +131,4 @@ if __name__ == "__main__":
         print("\nTraining Telco Churn Model...")
         telco_params = params.copy()
         telco_params['mlflow']['experiment_name'] = 'telco-churn-detection'
-        train_and_log(x_telco, y_telco, telco_params, output_dir=telco_data['output_dir'])
+        train_and_log(x_telco, y_telco, telco_params, output_dir=telco_data['output_dir'], model_name='telco_model')

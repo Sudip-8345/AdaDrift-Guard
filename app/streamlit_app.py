@@ -5,17 +5,27 @@ import requests
 import os
 import sys
 import yaml
+import joblib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.stats_utils import ks_test, psi, mmd_rbf
-from app.model import load_latest_model
 from src.preprocessing import clean_data
 from src.feature_engineering import feature_eng
 
-API_URL = "http://localhost:8000"
+# Support both local and Docker deployment
+API_URL = os.environ.get("API_URL", "http://localhost:8000")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARAMS_PATH = os.path.join(BASE_DIR, "params.yaml")
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+
+
+def load_local_model(dataset_type):
+    """Load model from local file for drift detection."""
+    model_path = os.path.join(MODELS_DIR, f"{dataset_type}_model.joblib")
+    if os.path.exists(model_path):
+        return joblib.load(model_path)
+    return None
 
 
 def load_params():
@@ -98,7 +108,14 @@ with st.sidebar:
 @st.cache_data
 def load_reference(path, target_col):
     df = pd.read_csv(path)
-    # Encode string labels to numeric if needed
+    # Keep a copy with original types for UI
+    return df
+
+
+@st.cache_data
+def load_reference_encoded(path, target_col):
+    """Load reference data with target encoded for predictions."""
+    df = pd.read_csv(path)
     if target_col in df.columns:
         if df[target_col].dtype == 'object':
             df[target_col] = df[target_col].map({'Yes': 1, 'No': 0, 'yes': 1, 'no': 0}).fillna(0).astype(int)
@@ -108,11 +125,13 @@ def load_reference(path, target_col):
 # Load reference data based on selected dataset
 target_col = ds_config['target_col']
 ref_df = load_reference(ds_config['reference_path'], target_col)
+ref_df_encoded = load_reference_encoded(ds_config['reference_path'], target_col)
 
 # Determine feature columns
 exclude_cols = [target_col, 'customerID']
 feature_cols = [c for c in ref_df.columns if c not in exclude_cols]
 numeric_cols = [c for c in feature_cols if ref_df[c].dtype in ['float64', 'int64', 'float32', 'int32']]
+categorical_cols = [c for c in feature_cols if ref_df[c].dtype == 'object']
 
 tab1, tab2 = st.tabs(["Prediction", "Drift Detection"])
 
@@ -133,29 +152,43 @@ with tab1:
         )
         
         if "Negative" in sample_type:
-            neg_df = ref_df[ref_df[target_col] == 0].head(10)
+            neg_df = ref_df_encoded[ref_df_encoded[target_col] == 0].head(10)
             if len(neg_df) == 0:
                 st.warning("No negative samples found")
                 sample = {}
             else:
                 sample_idx = st.selectbox("Select negative sample", options=range(len(neg_df)))
-                sample = neg_df.iloc[sample_idx][feature_cols].to_dict()
+                # Get original (non-encoded) data for the sample
+                neg_df_orig = ref_df[ref_df_encoded[target_col] == 0].head(10)
+                sample = neg_df_orig.iloc[sample_idx][feature_cols].to_dict()
                 st.info(f"{ds_config['negative_label']} samples typically show low positive probability")
         elif "Positive" in sample_type:
-            pos_df = ref_df[ref_df[target_col] == 1].head(20).reset_index(drop=True)
+            pos_df = ref_df_encoded[ref_df_encoded[target_col] == 1].head(20).reset_index(drop=True)
             if len(pos_df) == 0:
                 st.warning("No positive samples found")
                 sample = {}
             else:
                 sample_idx = st.selectbox("Select positive sample", options=range(len(pos_df)))
-                sample = pos_df.iloc[sample_idx][feature_cols].to_dict()
+                # Get original (non-encoded) data for the sample
+                pos_df_orig = ref_df[ref_df_encoded[target_col] == 1].head(20).reset_index(drop=True)
+                sample = pos_df_orig.iloc[sample_idx][feature_cols].to_dict()
                 st.warning(f"{ds_config['positive_label']} samples show varied probabilities")
         else:
             sample = {}
-            with st.expander("Enter feature values"):
-                for col in feature_cols[:20]:  # Limit to 20 for UI
-                    default_val = float(ref_df[col].mean()) if ref_df[col].dtype in ['float64', 'int64'] else 0.0
+            with st.expander("Enter feature values", expanded=True):
+                # Numeric features
+                st.write("**Numeric Features:**")
+                for col in numeric_cols:
+                    default_val = float(ref_df[col].mean())
                     sample[col] = st.number_input(col, value=default_val, format="%.6f")
+                
+                # Categorical features (with dropdown)
+                if categorical_cols:
+                    st.write("**Categorical Features:**")
+                    for col in categorical_cols:
+                        unique_vals = ref_df[col].dropna().unique().tolist()
+                        default_idx = 0
+                        sample[col] = st.selectbox(col, options=unique_vals, index=default_idx)
         
         with st.expander("View sample data"):
             st.json(sample)
@@ -336,13 +369,13 @@ with tab2:
                 
                 error_rate = 0
                 if label_col:
-                    model = load_latest_model(ds_config['api_dataset'])
+                    model = load_local_model(ds_config['api_dataset'])
                     if model:
                         try:
                             # Use already preprocessed stream data for telco
                             if ds_config['api_dataset'] == 'telco':
                                 # Align features with model
-                                expected_features = model.model.feature_names_in_ if hasattr(model.model, 'feature_names_in_') else None
+                                expected_features = model.feature_names_in_ if hasattr(model, 'feature_names_in_') else None
                                 X_processed = stream_encoded.copy()
                                 if expected_features is not None:
                                     for col in expected_features:
