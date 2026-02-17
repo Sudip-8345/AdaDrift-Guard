@@ -205,7 +205,6 @@ def predict(req: PredictRequest):
 
 def run_training_subprocess():
     """Run training script and reload models after completion."""
-    global models
     try:
         proc = subprocess.run(
             ["python", TRAIN_SCRIPT],
