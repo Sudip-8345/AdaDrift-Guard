@@ -1,0 +1,16 @@
+myenv/
+.git/
+.github/
+__pycache__/
+*.pyc
+*.pyo
+mlruns/
+plots/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.vscode/
+*.md
+.gitignore
+.dockerignore
+deploy/

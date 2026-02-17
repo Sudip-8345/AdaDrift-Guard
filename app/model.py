@@ -13,7 +13,6 @@ class ModelWrapper:
             self.load(model_path)
 
     def load(self, model_path):
-        """Load model from path - supports joblib or MLflow artifacts."""
         if os.path.isdir(model_path):
             # Check for joblib files
             if os.path.exists(os.path.join(model_path, "model.joblib")):
@@ -32,20 +31,17 @@ class ModelWrapper:
             raise ValueError(f"Unsupported model path: {model_path}")
 
     def predict_proba(self, X_df):
-        """Return probability of positive class."""
         X = X_df if self.preprocess is None else self.preprocess.transform(X_df)
         if hasattr(X, 'values'):
             X = X.values
         return self.model.predict_proba(X)[:, 1]
 
     def predict(self, X_df, threshold=0.5):
-        """Return binary predictions."""
         proba = self.predict_proba(X_df)
         return (proba > threshold).astype(int)
 
 
 def get_experiment_id(experiment_name):
-    """Get MLflow experiment ID by name from meta.yaml files."""
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     mlruns_dir = os.path.join(base_dir, "mlruns")
     
@@ -66,11 +62,6 @@ def get_experiment_id(experiment_name):
 
 
 def load_latest_model(dataset_type="credit"):
-    """Load the latest model from MLflow artifacts for a specific dataset.
-    
-    Args:
-        dataset_type: 'credit' for credit fraud or 'telco' for telco churn
-    """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     # Map dataset type to experiment name
